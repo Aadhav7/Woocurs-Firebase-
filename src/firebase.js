@@ -1,4 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -14,14 +15,17 @@ const hasFirebaseConfig = Object.values(firebaseConfig).every(
 );
 
 let app = null;
+let db = null;
 
 if (hasFirebaseConfig) {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-  console.log('Firebase initialized successfully:', app);
+  db = getFirestore(app);
+  console.log('Firebase and Firestore initialized successfully.');
 } else {
   console.info(
-    'Firebase is not initialized yet. Copy .env.example to .env.local, add your Firebase web app config, and restart npm start.'
+    'Firebase is not configured. Copy .env.example to .env.local, add your Firebase web app config, and restart npm start.'
   );
 }
 
+export { db };
 export default app;

@@ -14,7 +14,7 @@ function App() {
       <div className="app-shell">
         <nav className="navbar navbar-expand navbar-dark app-navbar">
           <div className="container">
-            <Link className="navbar-brand fw-bold" to="/">Day 6 App</Link>
+            <Link className="navbar-brand fw-bold" to="/">Day 7 App</Link>
             <div className="navbar-nav ms-auto flex-row gap-3">
               <Link className="nav-link" to="/">Home</Link>
               <Link className="nav-link" to="/registration">Register</Link>
@@ -39,7 +39,7 @@ function App() {
         </main>
 
         <footer className="text-center py-4 text-secondary small">
-          React + Firebase · Woocurs Internship · Day 6
+          React + Firebase Firestore · Woocurs Internship · Day 7
         </footer>
       </div>
     </BrowserRouter>

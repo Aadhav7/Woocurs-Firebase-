@@ -1,64 +1,283 @@
 import React, { useState } from 'react';
+import { db } from '../firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
-function Registration() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+const initialValues = {
+    name: '',
+    email: '',
+    phone: ''
+};
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+function validate(values) {
+    const errors = {};
 
-    if (!name.trim() || !email.trim()) {
-      alert('Please enter your name and email.');
-      return;
+    const name = values.name.trim();
+    const email = values.email.trim();
+    const phone = values.phone.trim();
+
+    if (name.length < 3) {
+        errors.name = 'Name must be at least 3 characters.';
     }
 
-    // The Day 6 PDF uses an alert for this mini task; no database write is required yet.
-    alert(`Registered: ${name.trim()}, ${email.trim()}`);
-    setName('');
-    setEmail('');
-  };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.email = 'Please enter a valid email address.';
+    }
 
-  return (
-    <section className="content-card">
-      <p className="eyebrow mb-2">Get started</p>
-      <h1 className="h2 fw-bold mb-2">Register</h1>
-      <p className="text-secondary mb-4">
-        Enter your details below to test the registration form.
-      </p>
+    if (!/^\d{10}$/.test(phone)) {
+        errors.phone = 'Phone must contain exactly 10 digits.';
+    }
 
-      <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label htmlFor="name" className="form-label">Name</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="form-control form-control-lg"
-            placeholder="Enter your name"
-            autoComplete="name"
-            required
-          />
-        </div>
+    return errors;
+}
 
-        <div className="mb-4">
-          <label htmlFor="email" className="form-label">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="form-control form-control-lg"
-            placeholder="name@example.com"
-            autoComplete="email"
-            required
-          />
-        </div>
+function Registration() {
 
-        <button type="submit" className="btn btn-success btn-lg">Submit</button>
-      </form>
-    </section>
-  );
+    const [values, setValues] = useState(initialValues);
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+    const [submitting, setSubmitting] = useState(false);
+    const [success, setSuccess] = useState('');
+    const [submitError, setSubmitError] = useState('');
+
+    const handleChange = (event) => {
+        const { name, value } = event.target;
+
+        const updated = {
+            ...values,
+            [name]: value
+        };
+
+        setValues(updated);
+        setSuccess('');
+        setSubmitError('');
+
+        if (touched[name]) {
+            setErrors(validate(updated));
+        }
+    };
+
+    const handleBlur = (event) => {
+        const field = event.target.name;
+
+        setTouched(previous => ({
+            ...previous,
+            [field]: true
+        }));
+
+        setErrors(validate(values));
+    };
+
+    const handleSubmit = async (event) => {
+
+        event.preventDefault();
+
+        const validationErrors = validate(values);
+
+        setErrors(validationErrors);
+
+        setTouched({
+            name: true,
+            email: true,
+            phone: true
+        });
+
+        setSuccess('');
+        setSubmitError('');
+
+        if (Object.keys(validationErrors).length > 0) {
+            return;
+        }
+
+        if (!db) {
+            setSubmitError('Firebase is not configured.');
+            return;
+        }
+
+        setSubmitting(true);
+
+        try {
+
+            // Automatically save registration data to Firestore
+
+            await addDoc(collection(db, 'users'), {
+
+                name: values.name.trim(),
+
+                email: values.email.trim(),
+
+                phone: values.phone.trim(),
+
+                timestamp: serverTimestamp()
+
+            });
+
+            // Display confirmation
+
+            setSuccess(
+                'Registration successful! Your details have been saved to Firebase Firestore.'
+            );
+
+            // Clear registration form
+
+            setValues(initialValues);
+            setErrors({});
+            setTouched({});
+
+        } catch (error) {
+
+            console.error('Firestore submission error:', error);
+
+            setSubmitError(
+                'Error submitting registration. Please try again.'
+            );
+
+        } finally {
+
+            setSubmitting(false);
+
+        }
+    };
+
+    return (
+
+        <section className="content-card">
+
+            <p className="eyebrow mb-2">Get started</p>
+
+            <h1 className="h2 fw-bold mb-2">Register</h1>
+
+            <p className="text-secondary mb-4">
+                Enter your details. Your registration will automatically
+                be saved in Firebase Firestore.
+            </p>
+
+            {success && (
+                <div className="alert alert-success" role="alert">
+                    {success}
+                </div>
+            )}
+
+            {submitError && (
+                <div className="alert alert-danger" role="alert">
+                    {submitError}
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} noValidate>
+
+                {/* NAME */}
+
+                <div className="mb-3">
+
+                    <label htmlFor="name" className="form-label">
+                        Name
+                    </label>
+
+                    <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        value={values.name}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        className={`form-control form-control-lg ${
+                            touched.name && errors.name ? 'is-invalid' : ''
+                        }`}
+                        placeholder="Enter your name"
+                    />
+
+                    {touched.name && errors.name && (
+                        <div className="invalid-feedback">
+                            {errors.name}
+                        </div>
+                    )}
+
+                </div>
+
+                {/* EMAIL */}
+
+                <div className="mb-3">
+
+                    <label htmlFor="email" className="form-label">
+                        Email
+                    </label>
+
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={values.email}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        className={`form-control form-control-lg ${
+                            touched.email && errors.email ? 'is-invalid' : ''
+                        }`}
+                        placeholder="name@example.com"
+                    />
+
+                    {touched.email && errors.email && (
+                        <div className="invalid-feedback">
+                            {errors.email}
+                        </div>
+                    )}
+
+                </div>
+
+                {/* PHONE */}
+
+                <div className="mb-4">
+
+                    <label htmlFor="phone" className="form-label">
+                        Phone
+                    </label>
+
+                    <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength="10"
+                        value={values.phone}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        className={`form-control form-control-lg ${
+                            touched.phone && errors.phone ? 'is-invalid' : ''
+                        }`}
+                        placeholder="10-digit phone number"
+                    />
+
+                    {touched.phone && errors.phone && (
+                        <div className="invalid-feedback">
+                            {errors.phone}
+                        </div>
+                    )}
+
+                </div>
+
+                {/* SUBMIT */}
+
+                <button
+                    type="submit"
+                    className="btn btn-success btn-lg"
+                    disabled={submitting}
+                >
+
+                    {submitting ? (
+                        <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Submitting...
+                        </>
+                    ) : (
+                        'Submit'
+                    )}
+
+                </button>
+
+            </form>
+
+        </section>
+
+    );
 }
 
 export default Registration;
